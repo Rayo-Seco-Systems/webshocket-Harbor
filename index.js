@@ -12,6 +12,8 @@ app.get("/", (req, res) => res.send('Signal Server Running!'));
 const webSocket = require("ws");
 const wss = new webSocket.Server({ server });
 
+let clientIdCounter = 0;
+
 wss.on("connection", function (socket, req) {
     const clientId = ++clientIdCounter;
     const ip = req.socket.remoteAddress;
