@@ -3,7 +3,7 @@ const app = express();
 const http = require("http");
 const server = http.createServer(app);
 
-server.listen(3000);
+server.listen(80);
 
 app.get("/", (req, res) => res.send('Signal Server Running!'));
 
