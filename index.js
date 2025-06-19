@@ -3,31 +3,38 @@ const app = express();
 const http = require("http");
 const server = http.createServer(app);
 
-server.listen(80);
+server.listen(80, () => {
+    console.log("Signal Server listening on port 80");
+});
 
 app.get("/", (req, res) => res.send('Signal Server Running!'));
 
 const webSocket = require("ws");
 const wss = new webSocket.Server({ server });
 
-wss.on("connection", function (socket) {
-    // Some feedback on the console
-    console.log("A client just connected");
+wss.on("connection", function (socket, req) {
+    const clientId = ++clientIdCounter;
+    const ip = req.socket.remoteAddress;
+
+    console.log(`[CONNECT] Client #${clientId} connected from IP ${ip}`);
 
     socket.on("message", function (msg) {
-        console.log("Received message from client: " + msg);
+        console.log(`[RECEIVE] Client #${clientId} sent: ${msg}`);
         
         // Broadcast that message to all connected clients except sender
         wss.clients.forEach(function (client) {
-          console.log("Send to client: " + client + ": " + (client !== socket));
-          
-          if (client !== socket) {
-            client.send(msg);
-          }
+            if (client !== socket && client.readyState === webSocket.OPEN) {
+                console.log(`[FORWARD] Sending message from Client #${clientId} to another client`);
+                client.send(msg);
+            }
         });
     });
 
     socket.on("close", function () {
-        console.log("Client disconnected");
+        console.log(`[DISCONNECT] Client #${clientId} disconnected`);
+    });
+
+    socket.on("error", function (err) {
+        console.error(`[ERROR] Client #${clientId}:`, err);
     });
 });
