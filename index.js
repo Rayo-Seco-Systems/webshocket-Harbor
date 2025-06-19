@@ -15,6 +15,12 @@ const wss = new webSocket.Server({ server });
 let clientIdCounter = 0;
 
 wss.on("connection", function (socket, req) {
+    if (wss.clients.size > 2) {
+        console.warn("[LIMIT] Too many clients. Rejecting new connection.");
+        socket.close();
+        return;
+    }
+
     const clientId = ++clientIdCounter;
     const ip = req.socket.remoteAddress;
 
@@ -23,11 +29,14 @@ wss.on("connection", function (socket, req) {
     socket.on("message", function (msg) {
         console.log(`[RECEIVE] Client #${clientId} sent: ${msg}`);
         
-        // Broadcast that message to all connected clients except sender
         wss.clients.forEach(function (client) {
             if (client !== socket && client.readyState === webSocket.OPEN) {
-                console.log(`[FORWARD] Sending message from Client #${clientId} to another client`);
-                client.send(msg);
+                try {
+                    console.log(`[FORWARD] Sending message from Client #${clientId} to another client`);
+                    client.send(msg);
+                } catch (err) {
+                    console.error(`[ERROR] Failed to send message to another client:`, err.message || err);
+                }
             }
         });
     });
@@ -37,6 +46,11 @@ wss.on("connection", function (socket, req) {
     });
 
     socket.on("error", function (err) {
-        console.error(`[ERROR] Client #${clientId}:`, err);
+        console.error(`[ERROR] Client #${clientId}:`, err.message || err);
     });
+});
+
+// Captura errores globales inesperados
+process.on("uncaughtException", function (err) {
+    console.error("[FATAL] Uncaught exception:", err.message || err);
 });
