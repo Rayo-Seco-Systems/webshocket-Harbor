@@ -10,7 +10,12 @@ server.listen(80, () => {
 app.get("/", (req, res) => res.send('Signal Server Running!'));
 
 const webSocket = require("ws");
-const wss = new webSocket.Server({ server });
+const wss = new webSocket.Server({ 
+    server,
+    clientTracking: true,
+    keepAlive: true,
+    noServer: false
+});
 
 let clientIdCounter = 0;
 
@@ -25,6 +30,7 @@ wss.on("connection", function (socket, req) {
     const ip = req.socket.remoteAddress;
 
     console.log(`[CONNECT] Client #${clientId} connected from IP ${ip}`);
+    console.log(`[CONNECT] Headers:`, req.headers);
 
     socket.on("message", function (msg) {
         console.log(`[RECEIVE] Client #${clientId} sent raw: ${msg}`);
@@ -43,7 +49,9 @@ wss.on("connection", function (socket, req) {
             if (client !== socket && client.readyState === webSocket.OPEN) {
                 try {
                     console.log(`[FORWARD] Relaying message from Client #${clientId} to another client`);
+                    console.log(`[FORWARD] About to send message to client...`);
                     client.send(msg);
+                    console.log(`[FORWARD] Message sent to client.`);
                 } catch (err) {
                     console.error(`[ERROR] Failed to forward to another client:`, err.message || err);
                 }
