@@ -27,15 +27,25 @@ wss.on("connection", function (socket, req) {
     console.log(`[CONNECT] Client #${clientId} connected from IP ${ip}`);
 
     socket.on("message", function (msg) {
-        console.log(`[RECEIVE] Client #${clientId} sent: ${msg}`);
-        
+        console.log(`[RECEIVE] Client #${clientId} sent raw: ${msg}`);
+
+        let parsed = null;
+
+        try {
+            parsed = JSON.parse(msg);
+            console.log(`[PARSED] Message type: ${parsed?.type}, from: ${parsed?.from}, to: ${parsed?.to}`);
+        } catch (err) {
+            console.warn(`[WARNING] Client #${clientId} sent a non-JSON or invalid message. Ignored.`);
+            return;
+        }
+
         wss.clients.forEach(function (client) {
             if (client !== socket && client.readyState === webSocket.OPEN) {
                 try {
-                    console.log(`[FORWARD] Sending message from Client #${clientId} to another client`);
+                    console.log(`[FORWARD] Relaying message from Client #${clientId} to another client`);
                     client.send(msg);
                 } catch (err) {
-                    console.error(`[ERROR] Failed to send message to another client:`, err.message || err);
+                    console.error(`[ERROR] Failed to forward to another client:`, err.message || err);
                 }
             }
         });
@@ -50,7 +60,6 @@ wss.on("connection", function (socket, req) {
     });
 });
 
-// Captura errores globales inesperados
 process.on("uncaughtException", function (err) {
     console.error("[FATAL] Uncaught exception:", err.message || err);
 });
