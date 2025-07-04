@@ -12,6 +12,7 @@ app.get("/", (req, res) => res.send('Signal Server Running!'));
 const webSocket = require("ws");
 const wss = new webSocket.Server({ 
     server,
+    path: "/shocket",
     clientTracking: true,
     keepAlive: true,
     noServer: false
@@ -20,11 +21,6 @@ const wss = new webSocket.Server({
 let clientIdCounter = 0;
 
 wss.on("connection", function (socket, req) {
-    if (wss.clients.size > 2) {
-        console.warn("[LIMIT] Too many clients. Rejecting new connection.");
-        socket.close();
-        return;
-    }
 
     const clientId = ++clientIdCounter;
     const ip = req.socket.remoteAddress;
@@ -38,11 +34,10 @@ wss.on("connection", function (socket, req) {
         let parsed = null;
 
         try {
-            parsed = JSON.parse(msg);
-            console.log(`[PARSED] Message type: ${parsed?.type}, from: ${parsed?.from}, to: ${parsed?.to}`);
+            socket.ping();
+            console.log(`[PING] Sent ping to Client #${clientId}`);
         } catch (err) {
-            console.warn(`[WARNING] Client #${clientId} sent a non-JSON or invalid message. Ignored.`);
-            return;
+            console.error(`[PING-ERROR] Failed to ping Client #${clientId}:`, err.message || err);
         }
 
         wss.clients.forEach(function (client) {
