@@ -3,7 +3,7 @@ const app = express();
 const http = require("http");
 const server = http.createServer(app);
 
-server.listen(80, '0.0.0.0', () => {
+server.listen(443, '0.0.0.0', () => {
     console.log("Signal Server listening on port 80");
 });
 
