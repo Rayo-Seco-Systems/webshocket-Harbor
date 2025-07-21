@@ -1,68 +1,39 @@
+const fs = require("fs");
+const https = require("https");
 const express = require("express");
+const WebSocket = require("ws");
+
 const app = express();
-const http = require("http");
-const server = http.createServer(app);
 
-server.listen(443, '0.0.0.0', () => {
-    console.log("Signal Server listening on port 80");
+const server = https.createServer({
+    cert: fs.readFileSync("./ssl/cert.pem"),
+    key: fs.readFileSync("./ssl/key.pem")
+}, app);
+
+const PORT = 443;
+server.listen(PORT, () => {
+    console.log(`HTTPS + WSS server running on port ${PORT}`);
 });
 
-app.get("/", (req, res) => res.send('Signal Server Running!'));
+app.get("/", (req, res) => res.send("Secure WebSocket Signaling Server OK."));
 
-const webSocket = require("ws");
-const wss = new webSocket.Server({ 
-    server,
-    path: "/shocket",
-    clientTracking: true,
-    keepAlive: true,
-    noServer: false
-});
+const wss = new WebSocket.Server({ server });
 
-let clientIdCounter = 0;
-
-wss.on("connection", function (socket, req) {
-
-    const clientId = ++clientIdCounter;
-    const ip = req.socket.remoteAddress;
-
-    console.log(`[CONNECT] Client #${clientId} connected from IP ${ip}`);
-    console.log(`[CONNECT] Headers:`, req.headers);
+wss.on("connection", function (socket) {
+    console.log("New client connected");
 
     socket.on("message", function (msg) {
-        console.log(`[RECEIVE] Client #${clientId} sent raw: ${msg}`);
+        console.log("Message from client:", msg);
 
-        let parsed = null;
-
-        try {
-            socket.ping();
-            console.log(`[PING] Sent ping to Client #${clientId}`);
-        } catch (err) {
-            console.error(`[PING-ERROR] Failed to ping Client #${clientId}:`, err.message || err);
-        }
-
+        // Broadcast to all other clients
         wss.clients.forEach(function (client) {
-            if (client !== socket && client.readyState === webSocket.OPEN) {
-                try {
-                    console.log(`[FORWARD] Relaying message from Client #${clientId} to another client`);
-                    console.log(`[FORWARD] About to send message to client...`);
-                    client.send(msg);
-                    console.log(`[FORWARD] Message sent to client.`);
-                } catch (err) {
-                    console.error(`[ERROR] Failed to forward to another client:`, err.message || err);
-                }
+            if (client !== socket && client.readyState === WebSocket.OPEN) {
+                client.send(msg);
             }
         });
     });
 
     socket.on("close", function () {
-        console.log(`[DISCONNECT] Client #${clientId} disconnected`);
+        console.log("Client disconnected");
     });
-
-    socket.on("error", function (err) {
-        console.error(`[ERROR] Client #${clientId}:`, err.message || err);
-    });
-});
-
-process.on("uncaughtException", function (err) {
-    console.error("[FATAL] Uncaught exception:", err.message || err);
 });
