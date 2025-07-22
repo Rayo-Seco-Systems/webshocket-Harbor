@@ -10,7 +10,7 @@ const server = https.createServer({
     key: fs.readFileSync("./ssl/key.pem")
 }, app);
 
-const PORT = 443;
+const PORT = 3000;
 server.listen(PORT, () => {
     console.log(`HTTPS + WSS server running on port ${PORT}`);
 });
